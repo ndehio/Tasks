@@ -117,6 +117,8 @@ MotionConstrCommon::MotionConstrCommon(const std::vector<rbd::MultiBody> & mbs, 
   AL_(nrDof_), AU_(nrDof_)
 {
   assert(std::size_t(robotIndex_) < mbs.size() && robotIndex_ >= 0);
+  // This is technically incorrect but practically not a huge deal, see #66
+  curTorque_.setZero();
   lastTorque_.setZero();
 }
 
@@ -265,7 +267,7 @@ std::string MotionConstrCommon::descGenInEq(const std::vector<rbd::MultiBody> & 
  */
 
 MotionConstr::MotionConstr(const std::vector<rbd::MultiBody> & mbs, int robotIndex, const TorqueBound & tb)
-: MotionConstr(mbs, robotIndex, tb, {}, 0)
+: MotionConstr(mbs, robotIndex, tb, {}, 0.001)
 {
 }
 
@@ -279,16 +281,10 @@ MotionConstr::MotionConstr(const std::vector<rbd::MultiBody> & mbs,
 {
   rbd::paramToVector(tb.lTorqueBound, torqueL_);
   rbd::paramToVector(tb.uTorqueBound, torqueU_);
+  torqueDtL_.setConstant(-std::numeric_limits<double>::infinity());
+  torqueDtU_.setConstant(std::numeric_limits<double>::infinity());
   rbd::paramToVector(tdb.lTorqueDBound, torqueDtL_);
   rbd::paramToVector(tdb.uTorqueDBound, torqueDtU_);
-  if(torqueDtL_.size() == 0)
-  {
-    torqueDtL_.setConstant(-std::numeric_limits<double>::infinity());
-  }
-  if(torqueDtU_.size() == 0)
-  {
-    torqueDtU_.setConstant(std::numeric_limits<double>::infinity());
-  }
   torqueDtL_ *= dt;
   torqueDtU_ *= dt;
 }
@@ -323,7 +319,7 @@ MotionSpringConstr::MotionSpringConstr(const std::vector<rbd::MultiBody> & mbs,
                                        int robotIndex,
                                        const TorqueBound & tb,
                                        const std::vector<SpringJoint> & springs)
-: MotionSpringConstr(mbs, robotIndex, tb, {}, 0, springs)
+: MotionSpringConstr(mbs, robotIndex, tb, {}, 0.001, springs)
 {
 }
 
